@@ -1,0 +1,7 @@
+{"phase":"Observation","action":"INSPECT","detail":"warehouse reported EMPTY","fields":{"epoch":0,"evidence_epoch":0}}
+{"phase":"Guard","action":"RETRY","detail":"fresh EMPTY evidence and retry budget available","fields":{"allowed":true}}
+{"phase":"Observation","action":"RETRY","detail":"retry response timed out; side effect remains UNKNOWN","fields":{"epoch":1,"evidence_epoch":-1,"retry_effect":"UNKNOWN","reconcile_required":true}}
+{"phase":"Decide","action":"RECONCILE","detail":"a prior mutation may have happened","fields":{}}
+{"phase":"Observation","action":"RECONCILE","detail":"warehouse reported COMMITTED","fields":{"epoch":1,"evidence_epoch":1}}
+{"phase":"Decide","action":"STOP_SAFE","detail":"data may already exist; retry is unsafe","fields":{"retry_calls":1}}
+
