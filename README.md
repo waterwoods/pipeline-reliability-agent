@@ -1,70 +1,125 @@
 # Pipeline Reliability Agent
 
-A compact proof of work for **production data systems + AI agent reliability**.
+Production-style reliability control plane for data pipelines.
 
-The hard question after a pipeline failure is rarely “can we retry?” It is
-“can we prove that retrying will not duplicate or corrupt data?” This repo
-shows a small, deterministic control loop that treats missing evidence,
-concurrency, and crash recovery as first-class safety problems.
+A failed pipeline is easy to retry and easy to corrupt. This control plane lets
+an LLM propose a next step, then requires a deterministic Guard to authorize
+it. The logical run is durable: a crash resumes the same run instead of
+sending the mutation again. Completion waits for a fresh read of the external
+system.
 
-> **Scope:** runnable, synthetic reference code. It is not production-ready,
-> not a customer deployment, and not evidence of reduced MTTR.
+The code in this repository is a small runnable control loop with a synthetic
+adapter. The proof sections summarize a local lab exercised against real
+Airflow, BigQuery, and Postgres. That lab is not a fully production-deployed
+enterprise platform, and not all five incidents passed.
 
-## The 3-minute path
+## Architecture
 
-1. Read the failure mode and six-stage loop below.
-2. Scan the four safety contracts.
-3. Open the three short [Engineering Casebooks](#engineering-casebooks).
-4. Run the trace and four targeted tests.
+```mermaid
+flowchart TB
+  platform["Data Pipeline / Modern Data Platform"]
+  api["Reliability Agent FastAPI"]
+  pg["Durable Postgres"]
+  af["Airflow"]
+  bq["BigQuery"]
 
-## Problem
+  platform -->|"HTTP"| api
+  api --> pg
+  api --> af
+  api --> bq
+```
 
-An orchestrator can report failure after a warehouse commit already succeeded.
-A network timeout can hide whether a retry request was accepted. Two workers
-can race on the same incident. A replacement worker can inherit a stale
-checkpoint after a crash.
+The data platform calls the agent over HTTP. FastAPI stores the run in
+Postgres, then reads and mutates Airflow and BigQuery. Guard stands between a
+proposal and any external side effect.
 
-A naive “retry failed tasks” agent can therefore create the incident it was
-meant to fix.
+## Core concepts
 
-This design separates a proposed action from authorization and execution:
+- **LLM proposes; deterministic Guard authorizes.** A model may summarize or propose. It cannot authorize a retry, bypass Guard, or call an adapter.
+- **Durable state, checkpoint, and resume.** One `agent_run_id` survives pause, crash, and process restart.
+- **UNKNOWN is not NOT_EXECUTED.** A lost response after dispatch means the side effect may already have happened.
+- **Crash-safe reconciliation.** Resume re-reads external truth before any further mutation.
+- **No blind duplicate mutation.** A second clear is refused while the first is unresolved or already observed.
+- **Fresh external verification.** `COMPLETED` requires a new orchestrator or warehouse read, not a stale pre-mutation fact.
+- **HITL / STOP_SAFE.** If safety cannot be proved, the run pauses for a human or stops without another write.
+
+## Production proof
+
+Five local lab incidents against real Airflow and BigQuery. Write-up:
+[production reliability proof](docs/production_reliability_proof.md).
+
+| Incident | Result | What the run showed |
+|---|---|---|
+| 1 | **PASS** | Real Airflow retry, then a fresh BigQuery read, then `COMPLETED`. |
+| 2 | **PASS** | SIGKILL after retry dispatch. Durable `UNKNOWN`. Same `agent_run_id`. No second retry. Fresh BigQuery read. `COMPLETED`. |
+| 3 | **GAP** | Execution succeeded. Required downstream data was still missing. Execution success is not data correctness. |
+| 4 | **PARTIAL** | The late partition was backfilled. Correct partitions were not rewritten. Mixed-range validation and automatic completion are still incomplete. |
+| 5 | **PASS** (safety property) | Schema drift was detected. The unsafe load was not performed. The run requested human review. |
+
+Incidents 1, 2, and 5 passed the safety property under test. Incident 3 is an
+open gap. Incident 4 is partial.
+
+## Local Docker deployment proof
+
+A separate lab run called a Dockerized FastAPI service over HTTP with bearer
+authentication. The service used durable Postgres, real Airflow, and real
+BigQuery.
+
+The API container was restarted. Postgres stayed up. The same `agent_run_id`
+was restored, the run resumed, and it reached `COMPLETED`.
+
+This is a **local Docker deployment proof**. It is not a public-cloud or
+enterprise production deployment. Detail:
+[deployment demo](docs/deployment_demo.md).
+
+## What this demonstrates
+
+- End-to-end ownership of a reliability control plane, from the incident through external verification.
+- Production failure thinking: timeouts, process death, stale evidence, incomplete data, and schema drift.
+- Deterministic safety around an AI proposal boundary.
+- Durable workflow design: one run id, checkpoint, reconcile, and resume.
+- Real Airflow and BigQuery integration in the lab proof.
+- Service deployment: HTTP, authentication, and a container restart that did not lose the run.
+- Honest gaps. Semantic correctness and mixed-range completion are not solved.
+
+## Runnable control loop
+
+The rest of this repository is the deterministic loop behind those claims. It
+runs locally with a synthetic adapter. No cloud account or credentials are
+required. It is not a customer deployment and not evidence of reduced MTTR.
 
 ```mermaid
 flowchart LR
-    S[State] --> D[Decide]
-    D --> G[Guard]
-    G -->|allowed| E[Execute]
-    G -->|blocked| H[HITL]
-    E --> O[Observation]
-    O --> A[Apply]
-    A --> S
+  S[State] --> D[Decide]
+  D --> G[Guard]
+  G -->|allowed| E[Execute]
+  G -->|blocked| H[HITL]
+  E --> O[Observation]
+  O --> A[Apply]
+  A --> S
 ```
 
 | Stage | Owns | Safety boundary |
 |---|---|---|
-| **State** | Small incident snapshot, evidence epoch, retry intent | No hidden global facts |
+| **State** | Incident snapshot, evidence epoch, retry intent | No hidden global facts |
 | **Decide** | Pure action proposal | Cannot execute |
 | **Guard** | Last-moment authorization | Re-checks lease, evidence freshness, retry budget |
 | **Execute** | One adapter call | Persists UNKNOWN before RETRY dispatch |
 | **Observation** | What the external system reported | Does not mutate State |
 | **Apply** | Merges observed facts | Does not choose the next action |
 
-The optional AI/LLM boundary is intentionally narrow: a model may summarize or
-propose evidence, but it cannot authorize `RETRY`, bypass Guard, or call an
-adapter.
-
 ## Safety contracts
 
 | Risk | Contract |
 |---|---|
-| **UNKNOWN side effect** | A timeout after dispatch means “may have happened,” never “failed safely.” |
-| **Retry** | RETRY needs fresh `EMPTY` evidence, a live lease/fencing token, and unused retry budget. |
+| **UNKNOWN side effect** | A timeout after dispatch means the action may have happened. It does not mean the action failed safely. |
+| **Retry** | RETRY needs fresh `EMPTY` evidence, a live lease and fencing token, and unused retry budget. |
 | **Reconcile** | Every mutation invalidates pre-mutation evidence. UNKNOWN and lease takeover force a read before another action. |
-| **HITL** | If safety cannot be proved, pause. Human approval is an input; a production design must still re-run authorization immediately before execution. |
+| **HITL** | If safety cannot be proved, pause. Human approval is an input. Authorization still runs again immediately before execution. |
 
-The core policy is in
-[`agent.py`](src/pipeline_reliability/agent.py); the compare-and-set lease and
-fencing-token example is in
+Policy:
+[`agent.py`](src/pipeline_reliability/agent.py).
+Compare-and-set lease and fencing token:
 [`coordination.py`](src/pipeline_reliability/coordination.py).
 
 ## One trace: retry response lost
@@ -80,23 +135,21 @@ RECONCILE -> COMMITTED
 STOP_SAFE -> retry_calls=1
 ```
 
-See the [full JSONL trace](examples/stale-retry.trace.jsonl).
+Full record: [stale-retry.trace.jsonl](examples/stale-retry.trace.jsonl).
 
-## Engineering Casebooks
+## Engineering casebooks
 
-- [Stale evidence after retry](docs/casebooks/01-stale-evidence-after-retry.md)
-  — why pre-mutation reads must be invalidated.
-- [Multi-worker atomic claim](docs/casebooks/02-multi-worker-atomic-claim.md)
-  — one incident, one active owner.
-- [Lease takeover + reconcile after crash](docs/casebooks/03-lease-takeover-reconcile.md)
-  — fencing the old worker and forcing a fresh read.
+- [Stale evidence after retry](docs/casebooks/01-stale-evidence-after-retry.md) — pre-mutation reads cannot authorize a later mutation.
+- [Multi-worker atomic claim](docs/casebooks/02-multi-worker-atomic-claim.md) — one incident, one active owner.
+- [Lease takeover and reconcile after crash](docs/casebooks/03-lease-takeover-reconcile.md) — fence the old worker and force a fresh read.
 
-Each casebook states the failure, invariant, implementation decision, evidence,
-and remaining production gap.
+Each casebook states the failure, the invariant, the implementation decision,
+the evidence in this repo, and the remaining production gap. The lab incidents
+above are the external proof; these casebooks are the local invariants.
 
 ## Run locally
 
-Python 3.11+; no cloud account, credentials, database, or API key required.
+Python 3.11+. No cloud account, credentials, database, or API key.
 
 ```bash
 python -m venv .venv
@@ -106,44 +159,41 @@ python -m pipeline_reliability
 pytest
 ```
 
-Expected test result:
+Expected:
 
 ```text
 4 passed
 ```
 
-The tests are intentionally small and map directly to the three casebooks plus
-one explicit Guard rejection.
+The tests map to the three casebooks plus one explicit Guard rejection.
 
 ## Repository map
 
 ```text
 src/pipeline_reliability/
   model.py          # state, actions, observations
-  agent.py          # Decide, Guard, Execute, Apply, synthetic demo adapter
-  coordination.py   # atomic lease claim + fencing token
+  agent.py          # Decide, Guard, Execute, Apply, synthetic adapter
+  coordination.py   # atomic lease claim and fencing token
 tests/
   test_safety_contracts.py
-docs/casebooks/
+docs/
+  production_reliability_proof.md
+  deployment_demo.md
+  casebooks/
 examples/
   stale-retry.trace.jsonl
 ```
 
 ## Honest limitations
 
-- `LeaseStore` is process-local; production needs a transactional shared store
-  with compare-and-set semantics and durable fencing tokens.
-- State and retry intent are in memory; production needs atomic persistence
-  before dispatch and an idempotency key accepted by the downstream system.
-- The adapter is synthetic. There are no Airflow, GCS, warehouse, cloud, or
-  customer credentials in this repo.
-- HITL is represented as a safe terminal outcome, not a shipped approval UI,
-  SSO/RBAC system, or auditable workflow.
-- The policy uses one bounded retry to keep the proof legible. Real retry
-  policy must be service-specific, rate-aware, and backed by measured failure
-  modes.
-- Tests demonstrate local invariants, not distributed-system correctness,
-  availability, throughput, production readiness, or business impact.
+- The runnable `LeaseStore` is process-local. A shared store needs transactional compare-and-set and durable fencing tokens. The lab crash and deployment proofs used Postgres for the runs described in the docs. That store is not shipped here.
+- State in this repository is in memory. Production persists the checkpoint before dispatch and requires an idempotency key the downstream system accepts.
+- The adapter in this repository is synthetic. Lab runs summarized in the proof docs used local Airflow, BigQuery, and Postgres. Those credentials and raw artifacts are not in this repo.
+- HITL here is a safe terminal outcome. It is not an approval UI, SSO, RBAC, or an auditable workflow. Same-run resume after human repair is not supported.
+- The local policy uses one bounded retry so the proof stays legible. A real policy has to be service-specific and rate-aware.
+- Incident 3 shows the semantic gap: a successful job can still write the wrong rows. Incident 4 does not automatically finish a mixed partition range.
+- Tests demonstrate local invariants. They do not demonstrate distributed correctness, availability, throughput, or business impact.
+- The Docker proof is local. There is no public-cloud hosting, managed production database, or enterprise deployment claim.
 
 ## License
 
