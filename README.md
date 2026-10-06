@@ -48,6 +48,10 @@ Guard’s hard checks are `RETRY`, `BACKFILL_PARTITION`, and `APPLY_APPROVED_REP
 
 There is no `SIGKILL` in this proof. Worker A is allowed to retry, `record_retry_intent()` persists `retry_side_effect="UNKNOWN"` **before** the adapter call, the file ledger records the accept, and the worker then raises `CrashAfterRetryAccepted`. That is the window between intent and the result checkpoint.
 
+![Crash, UNKNOWN, then reconcile](docs/architecture/pra-crash-reconcile.svg)
+
+Intent is persisted as UNKNOWN before mutation. If the worker fails after the external system accepts the retry, the next worker reconciles external truth instead of replaying the mutation.
+
 Worker B is a new `run_agent()` on the same checkpoint and a new adapter on the same ledger.
 
 ```text

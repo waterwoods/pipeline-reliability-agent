@@ -1,0 +1,32 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Segoe UI, Helvetica, Arial, sans-serif","fontSize":"20px","actorFontSize":"18px","noteFontSize":"18px","messageFontSize":"18px","actorBkg":"#fffdf8","actorBorder":"#1e3a5f","actorTextColor":"#1c1917","signalColor":"#1e3a5f","signalTextColor":"#1c1917","noteBkgColor":"#fdf4ef","noteTextColor":"#1c1917","noteBorderColor":"#9a3412"},"sequence":{"mirrorActors":false,"wrap":true,"messageAlign":"center"}}}%%
+sequenceDiagram
+  actor A as Worker A
+  participant G as Guard
+  participant C as Checkpoint
+  participant F as Airflow
+  actor B as Worker B
+
+  A->>G: Propose RETRY
+  G-->>A: ALLOW RETRY
+  Note over A,C: UNKNOWN is durable BEFORE the side effect
+  A->>C: Save retry_side_effect = UNKNOWN
+  rect rgb(253, 236, 230)
+    A->>F: Clear / retry the failed task
+    F-->>A: Request accepted
+    Note over A,F: CrashAfterRetryAccepted. Result checkpoint was not written.
+  end
+
+  B->>C: Load persisted State
+  C-->>B: retry_side_effect = UNKNOWN
+  Note over B: UNKNOWN ≠ not executed
+  B->>F: Read the run
+  Note over B,F: CHECK_ORCHESTRATOR_RUN
+  F-->>B: Orchestrator evidence
+  Note over B,C: Apply reconciles State. Then Decide and Guard may continue.
+  Note over B: Resume ≠ replay. Reconcile before retry.
+
+  Note over A,B: BAD: assume the retry failed, RETRY again, duplicate side effect
+  Note over A,B: GOOD: UNKNOWN, check Airflow, reconcile truth, then decide
+  Note over A,B: File ledger, not a production cluster. Worker B: CHECK, WAIT, CHECK, STOP_SAFE.
+  Note over A,B: Ledger retries 1. Duplicate writes 0.
+  Note over A,B: Decide proposes. Guard authorizes. Execute mutates. Reconcile before another mutation. Human approval still goes through Guard.
