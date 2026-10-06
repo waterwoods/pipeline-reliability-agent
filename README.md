@@ -12,13 +12,14 @@ Retrying a task after rows were already written duplicates data. The harder case
 
 ## Architecture
 
-```text
-Task log
-  → BedrockFactIntelligence          optional, injected
-  → FactProposal
-  → validate_fact_proposal
-  → Apply writes allowed fact fields onto State
+![Pipeline Reliability Agent architecture](docs/architecture/pra-architecture.svg)
 
+- The model may propose facts. It does not authorize a side effect.
+- Deterministic Guard authorizes a side effect.
+- Execute is the mutation boundary.
+- `UNKNOWN` triggers reconciliation before another retry.
+
+```text
 State → decide → guard → execute → observation → apply → checkpoint
 ```
 

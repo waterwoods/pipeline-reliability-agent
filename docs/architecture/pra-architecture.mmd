@@ -1,0 +1,38 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Segoe UI, Helvetica, Arial, sans-serif","fontSize":"22px","background":"#fffdf8","lineColor":"#1e3a5f","textColor":"#1c1917"},"flowchart":{"htmlLabels":false}}}%%
+block-beta
+columns 3
+
+BANNER["Proposal ≠ Authorization ≠ Execution"]:3
+
+space STATE["State"] space
+space DECIDE["Decide proposes"] space
+HUMAN["Human input<br/>still through Guard"] GUARD["Guard authorizes"] space
+AIR["Airflow<br/>status · log · clear<br/>tool, not authority"] EXEC["Execute performs"] UNK["Persist UNKNOWN<br/>then side effect<br/>≠ not executed"]
+WH["Warehouse<br/>did the write land?"] OBS["Observation"] RESUME["Resume ≠ replay<br/>exception after accept"]
+BED["Bedrock<br/>facts, not actions<br/>validated before State"] APPLY["Apply"] RECON["Reconcile truth<br/>then Decide<br/>before retry"]
+space TRACE["Trace / Persist<br/>back to State"] space
+
+STATE --> DECIDE
+DECIDE --> GUARD
+GUARD --> EXEC
+EXEC --> OBS
+OBS --> APPLY
+APPLY --> TRACE
+UNK --> RESUME
+RESUME --> RECON
+
+classDef banner fill:#1c1917,stroke:#1c1917,color:#fffdf8
+classDef propose fill:#1e3a5f,stroke:#1e3a5f,color:#fffdf8
+classDef authorize fill:#9a3412,stroke:#9a3412,color:#fffdf8
+classDef perform fill:#3f6212,stroke:#365314,color:#fffdf8
+classDef memory fill:#fffdf8,stroke:#1e3a5f,color:#1c1917,stroke-width:2px
+classDef side fill:#fffdf8,stroke:#78716c,color:#1c1917,stroke-dasharray:6 4
+classDef recoverNode fill:#fdf4ef,stroke:#9a3412,color:#1c1917,stroke-width:1.5px
+
+class BANNER banner
+class DECIDE propose
+class GUARD authorize
+class EXEC perform
+class STATE,OBS,APPLY,TRACE memory
+class HUMAN,AIR,WH,BED side
+class UNK,RESUME,RECON recoverNode
