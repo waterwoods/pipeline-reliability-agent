@@ -122,6 +122,27 @@ Policy:
 Compare-and-set lease and fencing token:
 [`coordination.py`](src/pipeline_reliability/coordination.py).
 
+## AWS Bedrock Integration
+
+Bedrock provides intelligence, not authority. It may propose facts about a failed task. It cannot choose `RETRY` or `BACKFILL`, and it cannot call the adapter.
+
+```mermaid
+flowchart LR
+  B[Bedrock] --> F[FactProposal]
+  F --> V[Validator]
+  V --> D[Decide]
+  D --> G[Guard]
+  G --> E[Execute]
+```
+
+The validator rejects action fields. Accepted facts are evidence only. Decide and Guard stay deterministic. `UNKNOWN` is not `NOT_EXECUTED`: a lost response after dispatch still blocks another retry, and the run asks a human when recovery cannot be proved.
+
+The demo and tests inject a fake Converse client. No AWS account, model ARN, or credentials are required. This is production-style proof of work, not a customer production deployment.
+
+```bash
+python -m pipeline_reliability.bedrock_demo
+```
+
 ## One trace: retry response lost
 
 The synthetic adapter commits the retry, then raises a transport timeout. The
@@ -162,10 +183,10 @@ pytest
 Expected:
 
 ```text
-4 passed
+10 passed
 ```
 
-The tests map to the three casebooks plus one explicit Guard rejection.
+Four tests map to the three casebooks plus one explicit Guard rejection. Six more cover the Bedrock fact adapter with a fake client.
 
 ## Repository map
 
@@ -173,9 +194,12 @@ The tests map to the three casebooks plus one explicit Guard rejection.
 src/pipeline_reliability/
   model.py          # state, actions, observations
   agent.py          # Decide, Guard, Execute, Apply, synthetic adapter
+  bedrock.py        # Bedrock fact adapter; proposes facts, not actions
+  bedrock_demo.py   # two-scenario fake-client demo
   coordination.py   # atomic lease claim and fencing token
 tests/
   test_safety_contracts.py
+  test_bedrock_facts.py
 docs/
   production_reliability_proof.md
   deployment_demo.md
