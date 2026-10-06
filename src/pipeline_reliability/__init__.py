@@ -1,7 +1,16 @@
-"""Public, synthetic reference implementation for safe pipeline recovery."""
+"""Pipeline Reliability Agent — public package exports.
 
-from pipeline_reliability.agent import Agent, SyntheticAdapter
-from pipeline_reliability.coordination import LeaseStore
-from pipeline_reliability.model import IncidentState
+The LLM may propose facts. Deterministic validation and Guard authorize
+every side effect. The model never has action authority.
+"""
 
-__all__ = ["Agent", "IncidentState", "LeaseStore", "SyntheticAdapter"]
+from pipeline_reliability.adapters import MockPipelineAdapter
+from pipeline_reliability.runner import AgentRunResult, run_agent
+from pipeline_reliability.state import PipelineReliabilityState
+
+__all__ = [
+    "AgentRunResult",
+    "MockPipelineAdapter",
+    "PipelineReliabilityState",
+    "run_agent",
+]

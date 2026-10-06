@@ -5,13 +5,15 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pipeline-reliability-agent"
 version = "0.2.0"
-description = "A small, safety-first reference loop for pipeline incident automation."
+description = "Production-style pipeline reliability agent: facts may be proposed, Guard authorizes every side effect."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = []
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
+llm = ["openai>=1.40.0"]
+bedrock = ["boto3>=1.35.0"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

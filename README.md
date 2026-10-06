@@ -1,200 +1,136 @@
 # Pipeline Reliability Agent
 
-Production-style reliability control plane for data pipelines.
+**The model may propose facts. It cannot authorize a side effect.**
 
-A failed pipeline is easy to retry and easy to corrupt. This control plane lets
-an LLM propose a next step, then requires a deterministic Guard to authorize
-it. The logical run is durable: a crash resumes the same run instead of
-sending the mutation again. Completion waits for a fresh read of the external
-system.
+A failed pipeline task is easy to retry and easy to corrupt. This agent investigates the failure, and a deterministic Guard is the only component that can authorize `RETRY` or `BACKFILL_PARTITION`. If the worker dies after a retry may already have been accepted, resume reads the external system before it does anything else.
 
-The code in this repository is a small runnable control loop with a synthetic
-adapter. The proof sections summarize a local lab exercised against real
-Airflow, BigQuery, and Postgres. That lab is not a fully production-deployed
-enterprise platform, and not all five incidents passed.
+This repository is a **production-style proof of work, not customer production**. The checked-in demos use a mock adapter, a local JSON ledger that records accepted clears, and a fake Bedrock Converse client. They do not call Airflow or AWS, and they do not measure production MTTR.
+
+## 30-second problem
+
+Retrying a task after rows were already written duplicates data. The harder case is uncertainty: the worker recorded an intent, the orchestrator may have accepted the clear, and the process died before the result was saved. That state is `UNKNOWN`. It is not the same as “the retry never ran.”
 
 ## Architecture
 
-```mermaid
-flowchart TB
-  platform["Data Pipeline / Modern Data Platform"]
-  api["Reliability Agent FastAPI"]
-  pg["Durable Postgres"]
-  af["Airflow"]
-  bq["BigQuery"]
+```text
+Task log
+  → BedrockFactIntelligence          optional, injected
+  → FactProposal
+  → validate_fact_proposal
+  → Apply writes allowed fact fields onto State
 
-  platform -->|"HTTP"| api
-  api --> pg
-  api --> af
-  api --> bq
+State → decide → guard → execute → observation → apply → checkpoint
 ```
 
-The data platform calls the agent over HTTP. FastAPI stores the run in
-Postgres, then reads and mutates Airflow and BigQuery. Guard stands between a
-proposal and any external side effect.
-
-## Core concepts
-
-- **LLM proposes; deterministic Guard authorizes.** A model may summarize or propose. It cannot authorize a retry, bypass Guard, or call an adapter.
-- **Durable state, checkpoint, and resume.** One `agent_run_id` survives pause, crash, and process restart.
-- **UNKNOWN is not NOT_EXECUTED.** A lost response after dispatch means the side effect may already have happened.
-- **Crash-safe reconciliation.** Resume re-reads external truth before any further mutation.
-- **No blind duplicate mutation.** A second clear is refused while the first is unresolved or already observed.
-- **Fresh external verification.** `COMPLETED` requires a new orchestrator or warehouse read, not a stale pre-mutation fact.
-- **HITL / STOP_SAFE.** If safety cannot be proved, the run pauses for a human or stops without another write.
-
-## Production proof
-
-Five local lab incidents against real Airflow and BigQuery. Write-up:
-[production reliability proof](docs/production_reliability_proof.md).
-
-| Incident | Result | What the run showed |
+| Step | Owns | Must not |
 |---|---|---|
-| 1 | **PASS** | Real Airflow retry, then a fresh BigQuery read, then `COMPLETED`. |
-| 2 | **PASS** | SIGKILL after retry dispatch. Durable `UNKNOWN`. Same `agent_run_id`. No second retry. Fresh BigQuery read. `COMPLETED`. |
-| 3 | **GAP** | Execution succeeded. Required downstream data was still missing. Execution success is not data correctness. |
-| 4 | **PARTIAL** | The late partition was backfilled. Correct partitions were not rewritten. Mixed-range validation and automatic completion are still incomplete. |
-| 5 | **PASS** (safety property) | Schema drift was detected. The unsafe load was not performed. The run requested human review. |
+| `decide()` | Propose the next action | Call a tool or write State |
+| `guard()` | Authorize or deny | Think, do I/O, or mutate State |
+| `execute()` | Perform the action | Decide policy |
+| `apply()` | Merge the observation into State | Choose the next action |
+| Bedrock | Propose a `FactProposal` | Authorize `RETRY`, `BACKFILL`, or `EXECUTE` |
 
-Incidents 1, 2, and 5 passed the safety property under test. Incident 3 is an
-open gap. Incident 4 is partial.
+`run_agent()` in `src/pipeline_reliability/runner.py` is the loop. Execute runs only when `guard()` returns `allowed=True`.
 
-## Local Docker deployment proof
+## Guardrails
 
-A separate lab run called a Dockerized FastAPI service over HTTP with bearer
-authentication. The service used durable Postgres, real Airflow, and real
-BigQuery.
+Decide, Guard, and Execute are separate calls.
 
-The API container was restarted. Postgres stayed up. The same `agent_run_id`
-was restored, the run resumed, and it reached `COMPLETED`.
+- A timeout with no prior retry makes `decide()` return `RETRY`.
+- `guard()` asks `evaluate_retry_safety()`. Rows already written, a partial write, critical downstream impact, or an unresolved `UNKNOWN` side effect are denied.
+- A denied `RETRY` never reaches the tool. The observation is `STOP_SAFE`.
+- Human approval is an input. `approve()` stores `approved_action`. The next loop still calls `guard()` before Execute.
 
-This is a **local Docker deployment proof**. It is not a public-cloud or
-enterprise production deployment. Detail:
-[deployment demo](docs/deployment_demo.md).
+Guard’s hard checks are `RETRY`, `BACKFILL_PARTITION`, and `APPLY_APPROVED_REPAIR`. Other actions pass in this version.
 
-## What this demonstrates
+## Crash and UNKNOWN
 
-- End-to-end ownership of a reliability control plane, from the incident through external verification.
-- Production failure thinking: timeouts, process death, stale evidence, incomplete data, and schema drift.
-- Deterministic safety around an AI proposal boundary.
-- Durable workflow design: one run id, checkpoint, reconcile, and resume.
-- Real Airflow and BigQuery integration in the lab proof.
-- Service deployment: HTTP, authentication, and a container restart that did not lose the run.
-- Honest gaps. Semantic correctness and mixed-range completion are not solved.
+There is no `SIGKILL` in this proof. Worker A is allowed to retry, `record_retry_intent()` persists `retry_side_effect="UNKNOWN"` **before** the adapter call, the file ledger records the accept, and the worker then raises `CrashAfterRetryAccepted`. That is the window between intent and the result checkpoint.
 
-## Runnable control loop
-
-The rest of this repository is the deterministic loop behind those claims. It
-runs locally with a synthetic adapter. No cloud account or credentials are
-required. It is not a customer deployment and not evidence of reduced MTTR.
-
-```mermaid
-flowchart LR
-  S[State] --> D[Decide]
-  D --> G[Guard]
-  G -->|allowed| E[Execute]
-  G -->|blocked| H[HITL]
-  E --> O[Observation]
-  O --> A[Apply]
-  A --> S
-```
-
-| Stage | Owns | Safety boundary |
-|---|---|---|
-| **State** | Incident snapshot, evidence epoch, retry intent | No hidden global facts |
-| **Decide** | Pure action proposal | Cannot execute |
-| **Guard** | Last-moment authorization | Re-checks lease, evidence freshness, retry budget |
-| **Execute** | One adapter call | Persists UNKNOWN before RETRY dispatch |
-| **Observation** | What the external system reported | Does not mutate State |
-| **Apply** | Merges observed facts | Does not choose the next action |
-
-## Safety contracts
-
-| Risk | Contract |
-|---|---|
-| **UNKNOWN side effect** | A timeout after dispatch means the action may have happened. It does not mean the action failed safely. |
-| **Retry** | RETRY needs fresh `EMPTY` evidence, a live lease and fencing token, and unused retry budget. |
-| **Reconcile** | Every mutation invalidates pre-mutation evidence. UNKNOWN and lease takeover force a read before another action. |
-| **HITL** | If safety cannot be proved, pause. Human approval is an input. Authorization still runs again immediately before execution. |
-
-Policy:
-[`agent.py`](src/pipeline_reliability/agent.py).
-Compare-and-set lease and fencing token:
-[`coordination.py`](src/pipeline_reliability/coordination.py).
-
-## One trace: retry response lost
-
-The synthetic adapter commits the retry, then raises a transport timeout. The
-agent records `UNKNOWN`, reconciles, finds the commit, and stops without a
-second retry:
+Worker B is a new `run_agent()` on the same checkpoint and a new adapter on the same ledger.
 
 ```text
-INSPECT   -> EMPTY
-RETRY     -> UNKNOWN (response lost after dispatch)
-RECONCILE -> COMMITTED
-STOP_SAFE -> retry_calls=1
+Checkpoint after the crash: retry_side_effect=UNKNOWN, orchestrator_status empty
+Ledger retries: 1
+Worker B actions: CHECK_ORCHESTRATOR_RUN → WAIT → CHECK_ORCHESTRATOR_RUN → STOP_SAFE
+Ledger retries after resume: 1
+Duplicate external writes: 0
 ```
 
-Full record: [stale-retry.trace.jsonl](examples/stale-retry.trace.jsonl).
+`UNKNOWN` means the clear may have landed. A Guard denial is `not_executed`. An accepted mutation is `completed`. Resume checks first. It does not send the clear again while the side effect is still `UNKNOWN`.
 
-## Engineering casebooks
+## Reconcile
 
-- [Stale evidence after retry](docs/casebooks/01-stale-evidence-after-retry.md) — pre-mutation reads cannot authorize a later mutation.
-- [Multi-worker atomic claim](docs/casebooks/02-multi-worker-atomic-claim.md) — one incident, one active owner.
-- [Lease takeover and reconcile after crash](docs/casebooks/03-lease-takeover-reconcile.md) — fence the old worker and force a fresh read.
+**RETRY.** Loading the checkpoint clears a stale orchestrator status when the side effect is `UNKNOWN`. The next action is `CHECK_ORCHESTRATOR_RUN`. Apply clears `UNKNOWN` only from evidence the clear landed: a new attempt or repair id, `SUCCESS`, or `RUNNING` when identity cannot prove it is still the old attempt. The same attempt still `FAILED` stays `UNKNOWN`.
 
-Each casebook states the failure, the invariant, the implementation decision,
-the evidence in this repo, and the remaining production gap. The lab incidents
-above are the external proof; these casebooks are the local invariants.
+**BACKFILL.** `reconcile_backfill()` is a read. It does not call `backfill_partition()`.
 
-## Run locally
+| Result | What Apply does |
+|---|---|
+| `LANDED` | Mark the partition `BACKFILLED`. Do not write again. |
+| `NOT_LANDED` | Restore `ARRIVED` with an empty target. Guard may allow one new backfill. |
+| `UNKNOWN` | Keep the intent. Pause for a human. Do not guess. |
 
-Python 3.11+. No cloud account, credentials, database, or API key.
+## AWS Bedrock fact intelligence
+
+`BedrockFactIntelligence` calls an injected `converse` client and returns a `FactProposal`. It does not write State, and it does not call Decide, Guard, or Execute. A response that contains tool use is rejected.
+
+The validator accepts or rejects the proposal. Accepted facts may set allowlisted State fields, including `error="timeout"`. The next `decide()` already understands that field and may propose `RETRY`. `failure_type` and `confidence` are not written and do not select an action. Keys such as `RETRY`, `BACKFILL`, `EXECUTE`, and `authorization` are rejected by the existing validator.
+
+If `retry_side_effect` is already `UNKNOWN`, the same accepted timeout facts still do not produce a retry. Guard would deny it.
+
+The public demo and tests use a **fake Converse client**. No network call is made. This is not a live AWS production integration.
+
+## Run the demos
+
+Python 3.11+. No cloud account and no API key.
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
+
+python scripts/recovery_demo.py
+python scripts/bedrock_reliability_demo.py
+```
+
+`recovery_demo.py` prints `Result: PASS` when the crashed retry is reconciled with zero duplicate clears.
+
+`bedrock_reliability_demo.py` prints `client=fake  network=no  tools=none`. Scenario A lets Guard allow one safe retry after accepted timeout facts. Scenario B accepts the same facts and still refuses a second retry while the side effect is `UNKNOWN`.
+
+A local mock run, with no model, stops instead of retrying when the warehouse already succeeded:
+
+```bash
 python -m pipeline_reliability
-pytest
 ```
 
-Expected:
+That command writes `.local/checkpoints/demo.json`. The adapter is `MockPipelineAdapter`.
 
-```text
-4 passed
+## Evidence
+
+```bash
+python -m pytest -q
 ```
 
-The tests map to the three casebooks plus one explicit Guard rejection.
+| Test | What it proves |
+|---|---|
+| `test_runner_does_not_execute_retry_after_guard_block` | Decide proposes `RETRY`. Guard denies it because rows exist. The tool does not run. |
+| `test_human_approval_cannot_bypass_partial_write_guard` | A human `RETRY` approval still hits Guard. |
+| `test_worker_b_reconciles_running_and_does_not_retry_again` | After `CrashAfterRetryAccepted`, resume checks and does not clear again. |
+| `test_crash_reconcile_duplicate_external_writes_are_zero` | Duplicate external writes are 0. |
+| `test_unknown_backfill_landed_reconciles_then_validates` | `LANDED` does not write again. |
+| `test_unknown_backfill_not_landed_may_backfill_once_after_guard` | `NOT_LANDED` may backfill once, after Guard. |
+| `test_unknown_backfill_unproven_asks_human_without_replay` | `UNKNOWN` asks a human and does not replay. |
+| `test_unknown_side_effect_blocks_retry_after_accepted_timeout_facts` | Accepted Bedrock facts do not override an open `UNKNOWN`. |
+| `test_retry_and_suggested_action_are_rejected_by_existing_validator` | Action and authorization keys never become State. |
 
-## Repository map
+`RunTrace` is the record of each step: action, Guard verdict, observation, and outcome.
 
-```text
-src/pipeline_reliability/
-  model.py          # state, actions, observations
-  agent.py          # Decide, Guard, Execute, Apply, synthetic adapter
-  coordination.py   # atomic lease claim and fencing token
-tests/
-  test_safety_contracts.py
-docs/
-  production_reliability_proof.md
-  deployment_demo.md
-  casebooks/
-examples/
-  stale-retry.trace.jsonl
-```
+## Boundary
 
-## Honest limitations
+Production-style proof of work, not customer production.
 
-- The runnable `LeaseStore` is process-local. A shared store needs transactional compare-and-set and durable fencing tokens. The lab crash and deployment proofs used Postgres for the runs described in the docs. That store is not shipped here.
-- State in this repository is in memory. Production persists the checkpoint before dispatch and requires an idempotency key the downstream system accepts.
-- The adapter in this repository is synthetic. Lab runs summarized in the proof docs used local Airflow, BigQuery, and Postgres. Those credentials and raw artifacts are not in this repo.
-- HITL here is a safe terminal outcome. It is not an approval UI, SSO, RBAC, or an auditable workflow. Same-run resume after human repair is not supported.
-- The local policy uses one bounded retry so the proof stays legible. A real policy has to be service-specific and rate-aware.
-- Incident 3 shows the semantic gap: a successful job can still write the wrong rows. Incident 4 does not automatically finish a mixed partition range.
-- Tests demonstrate local invariants. They do not demonstrate distributed correctness, availability, throughput, or business impact.
-- The Docker proof is local. There is no public-cloud hosting, managed production database, or enterprise deployment claim.
-
-## License
-
-MIT.
+- Crash proof: exception after the ledger accepts, not a real `SIGKILL`.
+- Bedrock proof: stubbed Converse, not a live AWS call.
+- No production MTTR and no customer ROI.
+- Airflow, BigQuery, Databricks, the API, Postgres, and the wake worker are not in this tree.
