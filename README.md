@@ -6,11 +6,27 @@ A failed pipeline task is easy to retry and easy to corrupt. This agent investig
 
 This repository is a **production-style proof of work, not customer production**. The checked-in demos use a mock adapter, a local JSON ledger that records accepted clears, and a fake Bedrock Converse client. They do not call Airflow or AWS, and they do not measure production MTTR.
 
+## System overview
+
+![PRA system architecture](docs/architecture/pra-system-architecture.svg)
+
+Solid boxes are this public showcase. Dashed boxes are the private integration lab and are not in this repository.
+
+- **Integration.** Python runs the public loop through a mock adapter. FastAPI, Airflow, BigQuery, Databricks, and Postgres are private and opt-in.
+- **Diagnosis.** An optional model may propose validated facts. It cannot authorize a side effect. The public client is fake and makes no AWS call.
+- **Guardrails.** Deterministic Guard allows or denies retry, backfill, and repair. Human approval still enters Guard.
+- **Execution.** Execute is the only side effect.
+- **Recovery.** The file checkpoint saves `UNKNOWN` before the adapter call. Resume checks the run before another retry. The proof is an exception after accept, not a production-cluster kill.
+- **Evaluation.** Public tests lock the Guard block and the crash path. The private catalog and CI release gate stay in the lab.
+- **Result.** Rows already written end at `STOP_SAFE`. No second write. Not a customer deployment, and not a measured saving or MTTR change.
+
 ## 30-second problem
 
 Retrying a task after rows were already written duplicates data. The harder case is uncertainty: the worker recorded an intent, the orchestrator may have accepted the clear, and the process died before the result was saved. That state is `UNKNOWN`. It is not the same as “the retry never ran.”
 
 ## Architecture
+
+The figure above is the system overview. This diagram is the detailed public loop.
 
 ![Pipeline Reliability Agent architecture](docs/architecture/pra-architecture.svg)
 

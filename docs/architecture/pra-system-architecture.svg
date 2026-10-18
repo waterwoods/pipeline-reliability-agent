@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+<title id="title">PRA system architecture</title>
+<desc id="desc">Public loop is Observe, Decide, Guard, Execute. Guard authorizes a side effect. FastAPI, Airflow, BigQuery, and Databricks are private and opt-in. A partial write stops before a second write.</desc>
+<rect width="1920" height="1080" fill="#f3f0e9"/>
+<defs>
+  <marker id="arrow-navy" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#1e3a5f"/></marker>
+  <marker id="arrow-rust" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#9a3412"/></marker>
+  <marker id="arrow-green" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#3f6212"/></marker>
+</defs>
+<text x="36" y="36" fill="#9a3412" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="1.2">PIPELINE RELIABILITY AGENT</text>
+<text x="36" y="70" fill="#1c1917" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="34" font-weight="700" text-anchor="start"><tspan x="36" dy="0">System architecture</tspan></text>
+<text x="36" y="98" fill="#57534e" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="18" font-weight="400" text-anchor="start"><tspan x="36" dy="0">Connects data systems. Diagnoses the failure. Guard stops an unsafe write.</tspan></text>
+<rect x="1548" y="28" width="336" height="64" rx="6" fill="#fffdf8" stroke="#d6d0c6" stroke-width="1"/>
+<rect x="1564" y="42" width="26" height="14" rx="2" fill="#fffdf8" stroke="#1e3a5f" stroke-width="2"/>
+<text x="1600" y="54" fill="#1c1917" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="start"><tspan x="1600" dy="0">Public showcase</tspan></text>
+<rect x="1564" y="66" width="26" height="14" rx="2" fill="#fffdf8" stroke="#78716c" stroke-width="1.75" stroke-dasharray="5 4"/>
+<text x="1600" y="78" fill="#1c1917" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="start"><tspan x="1600" dy="0">Private integration lab</tspan></text>
+<rect x="28" y="124" width="356" height="118" rx="6" fill="#fffdf8" stroke="#78716c" stroke-width="1.75" stroke-dasharray="6 4"/>
+<text x="44" y="156" fill="#1c1917" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="start"><tspan x="44" dy="0">Python / FastAPI</tspan></text>
+<text x="44" y="184" fill="#57534e" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="400" text-anchor="start"><tspan x="44" dy="0">POST /v1/reliability/runs</tspan><tspan x="44" dy="22.08">Postgres checkpoint is opt-in</tspan></text>
+<rect x="28" y="260" width="356" height="128" rx="6" fill="#fffdf8" stroke="#1e3a5f" stroke-width="2"/>
+<text x="44" y="292" fill="#1c1917" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="start"><tspan x="44" dy="0">Mock adapter</tspan></text>
+<text x="44" y="320" fill="#57534e" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="400" text-anchor="start"><tspan x="44" dy="0">Public default. No live cloud.</tspan></text>
+<rect x="28" y="406" width="356" height="200" rx="6" fill="#fffdf8" stroke="#78716c" stroke-width="1.75" stroke-dasharray="6 4"/>
+<text x="44" y="484" fill="#1c1917" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="start"><tspan x="44" dy="0">Adapters</tspan></text>
+<text x="44" y="512" fill="#57534e" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="18" font-weight="400" text-anchor="start"><tspan x="44" dy="0">Airflow · BigQuery · Databricks</tspan><tspan x="44" dy="24.84">Private lab. Not the API default.</tspan></text>
+<rect x="460" y="124" width="980" height="518" rx="8" fill="#fffdf8" stroke="#1e3a5f" stroke-width="2"/>
+<text x="484" y="152" fill="#1e3a5f" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="1.2">PRA RELIABILITY AGENT</text>
+<text x="484" y="174" fill="#57534e" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="400" text-anchor="start"><tspan x="484" dy="0">Public loop. Apply writes each observation back into State.</tspan></text>
+<rect x="484" y="196" width="300" height="86" rx="6" fill="#eef3f8" stroke="#1e3a5f" stroke-width="1.75"/>
+<text x="500" y="228" fill="#1c1917" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="20" font-weight="700" text-anchor="start"><tspan x="500" dy="0">Optional model</tspan></text>
+<text x="500" y="256" fill="#57534e" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="400" text-anchor="start"><tspan x="500" dy="0">Validated facts. Cannot authorize.</tspan></text>
+<rect x="900" y="196" width="250" height="86" rx="6" fill="#fffdf8" stroke="#1e3a5f" stroke-width="1.75"/>
+<text x="916" y="228" fill="#1c1917" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="20" font-weight="700" text-anchor="start"><tspan x="916" dy="0">Human approval</tspan></text>
+<text x="916" y="256" fill="#57534e" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="400" text-anchor="start"><tspan x="916" dy="0">Still enters Guard.</tspan></text>
+<rect x="484" y="328" width="220" height="118" rx="6" fill="#fffdf8" stroke="#1e3a5f" stroke-width="1.75"/>
+<text x="500" y="360" fill="#1c1917" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="start"><tspan x="500" dy="0">Observe</tspan></text>
+<text x="500" y="388" fill="#57534e" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="400" text-anchor="start"><tspan x="500" dy="0">Reads run, log, warehouse.</tspan></text>
+<rect x="760" y="328" width="220" height="118" rx="6" fill="#1e3a5f" stroke="#1e3a5f" stroke-width="2"/>
+<text x="776" y="360" fill="#fffdf8" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="start"><tspan x="776" dy="0">Decide</tspan></text>
+<text x="776" y="388" fill="#f3e4da" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="400" text-anchor="start"><tspan x="776" dy="0">Rules propose the action.</tspan></text>
+<rect x="1056" y="304" width="280" height="154" rx="6" fill="#9a3412" stroke="#1e3a5f" stroke-width="2.75"/>
+<text x="1072" y="336" fill="#fffdf8" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="30" font-weight="700" text-anchor="start"><tspan x="1072" dy="0">Guard</tspan></text>
+<text x="1072" y="364" fill="#f3e4da" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="400" text-anchor="start"><tspan x="1072" dy="0">Authorizes or denies.</tspan><tspan x="1072" dy="22.08">Retry, backfill, repair.</tspan></text>
+<rect x="1056" y="500" width="280" height="112" rx="6" fill="#3f6212" stroke="#1e3a5f" stroke-width="2"/>
+<text x="1072" y="532" fill="#fffdf8" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="24" font-weight="700" text-anchor="start"><tspan x="1072" dy="0">Execute</tspan></text>
+<text x="1072" y="560" fill="#f3e4da" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="400" text-anchor="start"><tspan x="1072" dy="0">The only side effect.</tspan></text>
+<rect x="1468" y="124" width="424" height="518" rx="8" fill="#fffdf8" stroke="#d6d0c6" stroke-width="1.5"/>
+<text x="1488" y="152" fill="#57534e" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="1.2">RESULT OF THE BRANCH</text>
+<rect x="1488" y="176" width="384" height="196" rx="6" fill="#fdf4ef" stroke="#9a3412" stroke-width="2"/>
+<text x="1504" y="294" fill="#1c1917" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="26" font-weight="700" text-anchor="start"><tspan x="1504" dy="0">STOP_SAFE</tspan></text>
+<text x="1504" y="322" fill="#57534e" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="17" font-weight="400" text-anchor="start"><tspan x="1504" dy="0">No second write.</tspan><tspan x="1504" dy="23.46">FAILED job, 3,000 rows. RETRY blocked.</tspan></text>
+<rect x="1488" y="488" width="384" height="124" rx="6" fill="#f4f7ee" stroke="#3f6212" stroke-width="2"/>
+<text x="1504" y="520" fill="#1c1917" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="start"><tspan x="1504" dy="0">One authorized call</tspan></text>
+<text x="1504" y="548" fill="#57534e" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="17" font-weight="400" text-anchor="start"><tspan x="1504" dy="0">Retry, repair, or backfill.</tspan></text>
+<text x="28" y="748" fill="#57534e" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="1.2">SUPPORTING CONTROLS</text>
+<rect x="28" y="766" width="640" height="200" rx="6" fill="#fffdf8" stroke="#9a3412" stroke-width="2"/>
+<text x="44" y="844" fill="#1c1917" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="24" font-weight="700" text-anchor="start"><tspan x="44" dy="0">Reconcile</tspan></text>
+<text x="44" y="872" fill="#57534e" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="17" font-weight="400" text-anchor="start"><tspan x="44" dy="0">Check the run first. Do not replay.</tspan></text>
+<rect x="760" y="766" width="680" height="200" rx="6" fill="#fffdf8" stroke="#1e3a5f" stroke-width="2"/>
+<text x="776" y="844" fill="#1c1917" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="24" font-weight="700" text-anchor="start"><tspan x="776" dy="0">File checkpoint</tspan></text>
+<text x="776" y="872" fill="#57534e" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="17" font-weight="400" text-anchor="start"><tspan x="776" dy="0">UNKNOWN is saved before the call.</tspan></text>
+<rect x="1468" y="766" width="424" height="104" rx="6" fill="#eef3f8" stroke="#1e3a5f" stroke-width="2"/>
+<text x="1484" y="798" fill="#1c1917" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="start"><tspan x="1484" dy="0">Safety tests</tspan></text>
+<text x="1484" y="826" fill="#57534e" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="400" text-anchor="start"><tspan x="1484" dy="0">Public guard and crash proofs.</tspan></text>
+<rect x="1468" y="882" width="424" height="84" rx="6" fill="#fffdf8" stroke="#78716c" stroke-width="1.75" stroke-dasharray="6 4"/>
+<text x="1484" y="914" fill="#1c1917" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="20" font-weight="700" text-anchor="start"><tspan x="1484" dy="0">Eval gate</tspan></text>
+<text x="1484" y="942" fill="#57534e" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="400" text-anchor="start"><tspan x="1484" dy="0">Private catalog and CI. Scripted cases.</tspan></text>
+<text x="960" y="1040" fill="#78716c" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="400" text-anchor="middle"><tspan x="960" dy="0">Public code does not call live cloud systems. Not a customer deployment.</tspan></text>
+<path d="M 384 228 L 460 228" fill="none" stroke="#78716c" stroke-width="1.75" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="5 4" marker-end="url(#arrow-navy)"/>
+<rect x="374.2" y="204" width="95.6" height="18" rx="2" fill="#f3f0e9" stroke="#f3f0e9" stroke-width="0"/>
+<text x="422" y="218" fill="#78716c" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle"><tspan x="422" dy="0">starts loop</tspan></text>
+<path d="M 384 324 L 424 324 L 424 386 L 484 386" fill="none" stroke="#1e3a5f" stroke-width="1.75" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-navy)"/>
+<path d="M 384 500 L 424 500 L 424 386" fill="none" stroke="#1e3a5f" stroke-width="1.75" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-navy)"/>
+<rect x="429.0" y="358" width="50.0" height="18" rx="2" fill="#f3f0e9" stroke="#f3f0e9" stroke-width="0"/>
+<text x="454" y="372" fill="#1e3a5f" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle"><tspan x="454" dy="0">reads</tspan></text>
+<path d="M 634 282 L 634 328" fill="none" stroke="#1e3a5f" stroke-width="1.75" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-navy)"/>
+<rect x="633.2" y="298" width="133.6" height="18" rx="2" fill="#f3f0e9" stroke="#f3f0e9" stroke-width="0"/>
+<text x="700" y="312" fill="#1e3a5f" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle"><tspan x="700" dy="0">facts into State</tspan></text>
+<path d="M 1151 282 L 1151 304" fill="none" stroke="#1e3a5f" stroke-width="1.75" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-navy)"/>
+<rect x="1040.2" y="282" width="95.6" height="18" rx="2" fill="#f3f0e9" stroke="#f3f0e9" stroke-width="0"/>
+<text x="1088" y="296" fill="#1e3a5f" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle"><tspan x="1088" dy="0">still Guard</tspan></text>
+<path d="M 704 386 L 760 386" fill="none" stroke="#1e3a5f" stroke-width="1.75" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-navy)"/>
+<path d="M 980 386 L 1056 386" fill="none" stroke="#1e3a5f" stroke-width="1.75" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-navy)"/>
+<rect x="981.6" y="360" width="72.8" height="18" rx="2" fill="#f3f0e9" stroke="#f3f0e9" stroke-width="0"/>
+<text x="1018" y="374" fill="#1e3a5f" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle"><tspan x="1018" dy="0">proposes</tspan></text>
+<path d="M 1336 360 L 1488 360" fill="none" stroke="#9a3412" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-rust)"/>
+<rect x="1390.8" y="334" width="42.4" height="18" rx="2" fill="#f3f0e9" stroke="#f3f0e9" stroke-width="0"/>
+<text x="1412" y="348" fill="#9a3412" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle"><tspan x="1412" dy="0">deny</tspan></text>
+<path d="M 1196 458 L 1196 500" fill="none" stroke="#3f6212" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-green)"/>
+<rect x="1223.0" y="470" width="50.0" height="18" rx="2" fill="#f3f0e9" stroke="#f3f0e9" stroke-width="0"/>
+<text x="1248" y="484" fill="#3f6212" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle"><tspan x="1248" dy="0">allow</tspan></text>
+<path d="M 1336 556 L 1488 556" fill="none" stroke="#3f6212" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-green)"/>
+<rect x="1347.6" y="530" width="72.8" height="18" rx="2" fill="#f3f0e9" stroke="#f3f0e9" stroke-width="0"/>
+<text x="1384" y="544" fill="#3f6212" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle"><tspan x="1384" dy="0">performs</tspan></text>
+<path d="M 1056 556 L 612 556 A 18 18 0 0 1 576 556 L 384 556" fill="none" stroke="#3f6212" stroke-width="1.75" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-green)"/>
+<rect x="768.4" y="528" width="103.19999999999999" height="18" rx="2" fill="#f3f0e9" stroke="#f3f0e9" stroke-width="0"/>
+<text x="820" y="542" fill="#3f6212" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle"><tspan x="820" dy="0">mock or live</tspan></text>
+<path d="M 1196 766 L 1196 612" fill="none" stroke="#9a3412" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-rust)"/>
+<rect x="1216.6" y="686" width="110.8" height="18" rx="2" fill="#f3f0e9" stroke="#f3f0e9" stroke-width="0"/>
+<text x="1272" y="700" fill="#9a3412" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle"><tspan x="1272" dy="0">UNKNOWN first</tspan></text>
+<path d="M 760 866 L 668 866" fill="none" stroke="#9a3412" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-rust)"/>
+<rect x="689.0" y="838" width="50.0" height="18" rx="2" fill="#f3f0e9" stroke="#f3f0e9" stroke-width="0"/>
+<text x="714" y="852" fill="#9a3412" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle"><tspan x="714" dy="0">crash</tspan></text>
+<path d="M 594 766 L 594 446" fill="none" stroke="#9a3412" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-rust)"/>
+<rect x="500.2" y="486" width="95.6" height="18" rx="2" fill="#f3f0e9" stroke="#f3f0e9" stroke-width="0"/>
+<text x="548" y="500" fill="#9a3412" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle"><tspan x="548" dy="0">check first</tspan></text>
+<path d="M 1880 372 L 1880 766" fill="none" stroke="#1e3a5f" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="3 4" marker-end="url(#arrow-navy)"/>
+<rect x="1805.6" y="438" width="72.8" height="18" rx="2" fill="#f3f0e9" stroke="#f3f0e9" stroke-width="0"/>
+<text x="1842" y="452" fill="#1e3a5f" font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle"><tspan x="1842" dy="0">verified</tspan></text>
+</svg>
