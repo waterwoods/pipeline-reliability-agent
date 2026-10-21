@@ -1,10 +1,14 @@
 # Pipeline Reliability Agent
 
-**The model may propose facts. It cannot authorize a side effect.**
+**The LLM may propose facts. A deterministic Guard controls execution.**
 
-A failed pipeline task is easy to retry and easy to corrupt. This agent investigates the failure, and a deterministic Guard is the only component that can authorize `RETRY` or `BACKFILL_PARTITION`. If the worker dies after a retry may already have been accepted, resume reads the external system before it does anything else.
+Pipeline Reliability Agent (PRA) investigates failed data pipelines through evidence-based diagnosis, validation, policy checks, and safe recovery.
 
-This repository is a **production-style proof of work, not customer production**. The checked-in demos use a mock adapter, a local JSON ledger that records accepted clears, and a fake Bedrock Converse client. They do not call Airflow or AWS, and they do not measure production MTTR.
+[Explore the Interactive PRA Playground](https://waterwoods.github.io/pipeline-reliability-agent/)
+
+The Playground replays a separate recorded Databricks + AWS Bedrock cloud lab: 3 repair submissions, 4 successful tasks, and final PASS / FINISH.
+
+This public repository contains extracted safety-loop code and tests using mock and stubbed integrations. It does not contain the complete private cloud integration. Neither the public demos nor the recorded lab is a customer production deployment.
 
 ## System overview
 
